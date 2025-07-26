@@ -159,39 +159,77 @@
             }
         }
 
-        // Fetch data from API
+        // Fetch data from API with CORS handling
         async function fetchData() {
             try {
                 updateConnectionStatus('connecting');
                 
                 // Fetch system stats
-                const statsResponse = await fetch(`${API_BASE}/system/stats`);
+                const statsResponse = await fetch(`${API_BASE}/system/stats`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
                 if (statsResponse.ok) {
                     const stats = await statsResponse.json();
                     document.getElementById('totalAccounts').textContent = stats.totalAccounts || 0;
                     document.getElementById('callsToday').textContent = stats.callsToday || 0;
                     document.getElementById('successRate').textContent = (stats.successRate || 0).toFixed(1) + '%';
+                } else {
+                    console.error('Stats fetch failed:', statsResponse.status, statsResponse.statusText);
                 }
 
                 // Fetch system status
-                const statusResponse = await fetch(`${API_BASE}/system/status`);
+                const statusResponse = await fetch(`${API_BASE}/system/status`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
                 if (statusResponse.ok) {
                     const status = await statusResponse.json();
                     updateMonitoringStatus(status.isMonitoring || false);
+                } else {
+                    console.error('Status fetch failed:', statusResponse.status, statusResponse.statusText);
                 }
 
                 // Fetch accounts
-                const accountsResponse = await fetch(`${API_BASE}/accounts`);
+                const accountsResponse = await fetch(`${API_BASE}/accounts`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
                 if (accountsResponse.ok) {
                     const accounts = await accountsResponse.json();
                     displayAccounts(accounts);
+                } else {
+                    console.error('Accounts fetch failed:', accountsResponse.status, accountsResponse.statusText);
+                    document.getElementById('accountsContent').innerHTML = '<div class="no-data error">❌ Failed to load accounts</div>';
                 }
 
                 // Fetch recent calls
-                const callsResponse = await fetch(`${API_BASE}/calls/recent`);
+                const callsResponse = await fetch(`${API_BASE}/calls/recent`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
                 if (callsResponse.ok) {
                     const calls = await callsResponse.json();
                     displayCalls(calls);
+                } else {
+                    console.error('Calls fetch failed:', callsResponse.status, callsResponse.statusText);
+                    document.getElementById('callsContent').innerHTML = '<div class="no-data error">❌ Failed to load calls</div>';
                 }
 
                 updateConnectionStatus('connected');
@@ -200,8 +238,8 @@
             } catch (error) {
                 console.error('Fetch error:', error);
                 updateConnectionStatus('error');
-                document.getElementById('accountsContent').innerHTML = '<div class="no-data error">❌ Connection failed</div>';
-                document.getElementById('callsContent').innerHTML = '<div class="no-data error">❌ Connection failed</div>';
+                document.getElementById('accountsContent').innerHTML = '<div class="no-data error">❌ Connection failed - Check console for details</div>';
+                document.getElementById('callsContent').innerHTML = '<div class="no-data error">❌ Connection failed - Check console for details</div>';
             }
         }
 
@@ -285,7 +323,11 @@
             try {
                 const response = await fetch(`${API_BASE}/monitoring/start`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    mode: 'cors',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
                 });
 
                 if (response.ok) {
@@ -293,11 +335,13 @@
                     updateMonitoringStatus(data.isMonitoring);
                     alert('✅ Twitter monitoring started successfully!');
                 } else {
-                    throw new Error('Failed to start monitoring');
+                    const errorText = await response.text();
+                    console.error('Start monitoring failed:', response.status, errorText);
+                    alert(`❌ Failed to start monitoring: ${response.status} - ${errorText}`);
                 }
             } catch (error) {
                 console.error('Start monitoring error:', error);
-                alert('❌ Failed to start monitoring. Check console for details.');
+                alert('❌ Failed to start monitoring. Network error - check console for details.');
             }
         }
 
@@ -306,7 +350,11 @@
             try {
                 const response = await fetch(`${API_BASE}/monitoring/stop`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    mode: 'cors',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
                 });
 
                 if (response.ok) {
@@ -314,11 +362,13 @@
                     updateMonitoringStatus(data.isMonitoring);
                     alert('⏸️ Twitter monitoring stopped successfully!');
                 } else {
-                    throw new Error('Failed to stop monitoring');
+                    const errorText = await response.text();
+                    console.error('Stop monitoring failed:', response.status, errorText);
+                    alert(`❌ Failed to stop monitoring: ${response.status} - ${errorText}`);
                 }
             } catch (error) {
                 console.error('Stop monitoring error:', error);
-                alert('❌ Failed to stop monitoring. Check console for details.');
+                alert('❌ Failed to stop monitoring. Network error - check console for details.');
             }
         }
 
@@ -329,6 +379,7 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard initialized, connecting to:', API_BASE);
             fetchData();
             
             // Auto-refresh every 30 seconds
